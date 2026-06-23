@@ -43,7 +43,7 @@ if (accessToken && refreshToken) {
             required 
           />
 
-          <!-- Turnstile -->
+          <!-- Turnstile (non-blocking for better UX) -->
           <div class="pt-2">
             <div id="turnstile-container" class="flex justify-center min-h-[70px]"></div>
             <p id="turnstile-status" class="text-amber-400 text-xs mt-2 text-center hidden">Verifying security...</p>
@@ -73,6 +73,7 @@ if (accessToken && refreshToken) {
   let turnstileToken = '';
   let widgetId = null;
   let isSubmitting = false;
+  let turnstileReady = false;
 
   const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || import.meta.env.TURNSTILE_SITE_KEY;
 
@@ -87,24 +88,13 @@ if (accessToken && refreshToken) {
     errorEl.classList.add('hidden');
   }
 
-  function resetTurnstile() {
-    if (typeof turnstile !== 'undefined' && widgetId) {
-      turnstile.reset(widgetId);
-      turnstileToken = '';
-    }
-  }
-
   function initializeTurnstile() {
     const container = document.getElementById('turnstile-container');
     
-    if (!siteKey) {
-      console.error('Turnstile site key is missing');
-      return;
-    }
-
-    if (typeof turnstile === 'undefined') {
-      console.warn('[Turnstile] Script not loaded yet, retrying...');
-      setTimeout(initializeTurnstile, 400);
+    if (!siteKey || typeof turnstile === 'undefined') {
+      console.log('Turnstile not available - continuing without captcha');
+      turnstileReady = true;
+      document.getElementById('submit-btn').disabled = false;
       return;
     }
 
@@ -116,27 +106,30 @@ if (accessToken && refreshToken) {
         retry: 'auto',
         callback: function(token) {
           turnstileToken = token;
+          turnstileReady = true;
           document.getElementById('submit-btn').disabled = false;
           document.getElementById('turnstile-status').classList.add('hidden');
-          console.log('%c✅ Turnstile verified successfully', 'color:#fbbf24');
+          console.log('%c✅ Turnstile verified', 'color:#fbbf24');
         },
-        'error-callback': function(errorCode) {
-          console.error('Turnstile error:', errorCode);
-          const errorEl = document.getElementById('turnstile-error');
-          errorEl.textContent = 'Security check failed. Please refresh.';
-          errorEl.classList.remove('hidden');
+        'error-callback': function() {
+          console.log('Turnstile error - continuing without captcha');
+          turnstileReady = true;
+          document.getElementById('submit-btn').disabled = false;
         }
       });
+      console.log('Turnstile widget initialized');
     } catch (e) {
-      console.error('Failed to render Turnstile:', e);
+      console.log('Turnstile failed to initialize - continuing without captcha');
+      turnstileReady = true;
+      document.getElementById('submit-btn').disabled = false;
     }
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('signin-form');
     const submitBtn = document.getElementById('submit-btn');
-    const statusEl = document.getElementById('turnstile-status');
 
+    // Initialize Turnstile asynchronously
     initializeTurnstile();
 
     form.addEventListener('submit', async (e) => {
@@ -159,17 +152,6 @@ if (accessToken && refreshToken) {
         return;
       }
 
-      if (!turnstileToken) {
-        showError('Please complete the security check');
-        isSubmitting = false;
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Sign In';
-        return;
-      }
-
-      statusEl.textContent = 'Verifying credentials...';
-      statusEl.classList.remove('hidden');
-
       try {
         const response = await fetch('/api/signin', {
           method: 'POST',
@@ -177,7 +159,7 @@ if (accessToken && refreshToken) {
           body: JSON.stringify({
             email,
             password,
-            turnstileToken
+            turnstileToken: turnstileToken || undefined
           })
         });
 
@@ -187,16 +169,18 @@ if (accessToken && refreshToken) {
           window.location.href = '/dashboard';
         } else {
           showError(result.error || 'Invalid credentials');
-          resetTurnstile();
+          // Reset Turnstile on error
+          if (widgetId && typeof turnstile !== 'undefined') {
+            turnstile.reset(widgetId);
+            turnstileToken = '';
+          }
         }
       } catch (err) {
         showError('Connection error. Please try again.');
-        resetTurnstile();
       } finally {
         isSubmitting = false;
         submitBtn.textContent = 'Sign In';
         submitBtn.disabled = false;
-        statusEl.classList.add('hidden');
       }
     });
   });
