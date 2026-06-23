@@ -1,58 +1,72 @@
 ---
-import { getSession } from '../../lib/auth.js';
+import { getSession, checkOnboardingStatus } from '../../lib/auth.js';
 
 const { url } = Astro;
 const token = url.searchParams.get('token');
 const type = url.searchParams.get('type');
-const redirectTo = url.searchParams.get('redirect_to') || '/onboarding';
+const error = url.searchParams.get('error');
 
-console.log(`[Verify] Processing verification - token: ${token?.substring(0, 20)}..., type: ${type}`);
+console.log(`[Verify Page] Received request with params:`, { 
+  token: token ? token.substring(0, 15) + '...' : null, 
+  type, 
+  error,
+  fullUrl: url.toString()
+});
 
-// If we have a token, try to verify it with Supabase
-if (token && type === 'signup') {
+// Handle Supabase verification callback
+if (token && (type === 'signup' || type === 'recovery')) {
   try {
-    const supabase = await import('../../lib/supabase.js');
-    const serverClient = supabase.createServerSupabaseClient(Astro);
+    console.log(`[Verify Page] Attempting to verify OTP for type: ${type}`);
     
-    const { error } = await serverClient.auth.verifyOtp({
+    const supabaseModule = await import('../../lib/supabase.js');
+    const serverClient = supabaseModule.createServerSupabaseClient(Astro);
+    
+    const { data, error: verifyError } = await serverClient.auth.verifyOtp({
       token,
-      type: 'signup'
+      type: type as any,
     });
 
-    if (error) {
-      console.error('[Verify] OTP verification failed:', error.message);
-      return Astro.redirect('/signin?error=verification_failed');
+    if (verifyError) {
+      console.error('[Verify Page] Verification failed:', verifyError.message);
+      return Astro.redirect(`/signin?error=${encodeURIComponent(verifyError.message)}`);
     }
 
-    console.log('[Verify] Email verified successfully, redirecting to onboarding');
-    return Astro.redirect('/onboarding');
-  } catch (err) {
-    console.error('[Verify] Unexpected error:', err);
+    console.log(`[Verify Page] Verification successful for user: ${data.user?.id}`);
+
+    // Check if they need to do onboarding
+    if (data.user) {
+      const { completed } = await checkOnboardingStatus(data.user.id, Astro.request);
+      const redirectUrl = completed ? '/dashboard' : '/onboarding';
+      console.log(`[Verify Page] Redirecting to: ${redirectUrl}`);
+      return Astro.redirect(redirectUrl);
+    }
+  } catch (err: any) {
+    console.error('[Verify Page] Unexpected error during verification:', err.message);
+    return Astro.redirect('/signin?error=verification_error');
   }
 }
 
-// If no token or already verified, check session and redirect appropriately
+// If we have a session already, handle redirect logic
 const session = await getSession(Astro.request);
 
 if (session?.user) {
-  const { checkOnboardingStatus } = await import('../../lib/auth.js');
+  console.log(`[Verify Page] Active session found for user ${session.user.id}, checking onboarding status`);
   const { completed } = await checkOnboardingStatus(session.user.id, Astro.request);
   
-  if (!completed) {
-    return Astro.redirect('/onboarding');
-  } else {
-    return Astro.redirect('/dashboard');
-  }
+  const redirectUrl = completed ? '/dashboard' : '/onboarding';
+  console.log(`[Verify Page] Session-based redirect to: ${redirectUrl}`);
+  return Astro.redirect(redirectUrl);
 }
 
-// Fallback
-return Astro.redirect('/signin');
+// Default fallback
+console.log('[Verify Page] No token or session - redirecting to signin');
+return Astro.redirect('/signin?message=please_sign_in');
 ---
 
-<!-- This page should never be seen by users as it redirects immediately -->
 <div class="min-h-screen flex items-center justify-center bg-zinc-950">
   <div class="text-center">
-    <div class="animate-spin w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full mx-auto mb-4"></div>
-    <p class="text-zinc-400">Verifying your email...</p>
+    <div class="animate-spin w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full mx-auto mb-6"></div>
+    <h2 class="text-xl font-medium text-white mb-2">Verifying your email...</h2>
+    <p class="text-zinc-400">Please wait while we confirm your account.</p>
   </div>
 </div>
