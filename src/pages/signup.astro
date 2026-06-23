@@ -76,7 +76,8 @@ import Input from '../components/Input.astro';
   let widgetId = null;
   let isSubmitting = false;
 
-  const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
+  // Support both naming conventions from .env_shared
+  const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || import.meta.env.TURNSTILE_SITE_KEY;
 
   function showError(message) {
     const errorEl = document.getElementById('form-error');
@@ -94,15 +95,24 @@ import Input from '../components/Input.astro';
       turnstile.reset(widgetId);
       turnstileToken = '';
       document.getElementById('submit-btn').disabled = true;
+      console.log('Turnstile widget reset');
     }
   }
 
   function initializeTurnstile() {
     const container = document.getElementById('turnstile-container');
     
+    if (!siteKey) {
+      console.error('Turnstile site key is missing from environment variables');
+      const errorEl = document.getElementById('turnstile-error');
+      errorEl.textContent = 'Security service not configured. Contact support.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
     if (typeof turnstile === 'undefined') {
       console.warn('[Turnstile] Script not loaded yet, retrying...');
-      setTimeout(initializeTurnstile, 300);
+      setTimeout(initializeTurnstile, 400);
       return;
     }
 
@@ -119,21 +129,24 @@ import Input from '../components/Input.astro';
           console.log('%c✅ Turnstile verified successfully', 'color:#fbbf24; font-weight:bold');
         },
         'error-callback': function(errorCode) {
-          console.error('Turnstile error:', errorCode);
+          console.error('Turnstile error code:', errorCode);
           const errorEl = document.getElementById('turnstile-error');
           errorEl.textContent = 'Security check failed. Please refresh the page.';
           errorEl.classList.remove('hidden');
           document.getElementById('submit-btn').disabled = true;
         },
         'expired-callback': function() {
-          console.log('Turnstile token expired');
+          console.log('Turnstile token expired - resetting');
           resetTurnstile();
         }
       });
       
-      console.log('%cTurnstile widget initialized with production-ready settings', 'color:#22c55e');
+      console.log('%c🔒 Turnstile widget initialized with key:', 'color:#22c55e', siteKey.substring(0, 15) + '...');
     } catch (e) {
-      console.error('Failed to render Turnstile:', e);
+      console.error('Failed to render Turnstile widget:', e);
+      const errorEl = document.getElementById('turnstile-error');
+      errorEl.textContent = 'Failed to load security check. Please refresh.';
+      errorEl.classList.remove('hidden');
     }
   }
 
@@ -168,7 +181,7 @@ import Input from '../components/Input.astro';
       }
 
       if (!turnstileToken) {
-        showError('Please complete the security check');
+        showError('Please complete the security check above');
         isSubmitting = false;
         submitBtn.disabled = false;
         submitBtn.textContent = 'Create Account';
