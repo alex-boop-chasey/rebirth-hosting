@@ -5,22 +5,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const { url } = context;
   const path = url.pathname;
 
-  console.log(`[Middleware] Request to: ${path}`);
-
-  // Public paths that don't require auth
-  const publicPaths = [
-    '/', 
-    '/signup', 
-    '/signin', 
-    '/check-email', 
-    '/auth/verify'
-  ];
-  
+  // Public paths
+  const publicPaths = ['/', '/signup', '/signin', '/check-email', '/auth/verify'];
   if (publicPaths.includes(path) || path.startsWith('/api/')) {
     return next();
   }
 
-  // Protected paths - TEMPORARILY DISABLED onboarding check as requested
+  // All other paths require authentication
   const session = await getSession(context);
   
   if (!session?.user) {
@@ -28,9 +19,6 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return createRedirectResponse('/signin');
   }
 
-  // For now, allow all authenticated users to reach dashboard
-  // Onboarding enforcement is disabled until we re-enable it
-  console.log(`[Middleware] Authenticated user ${session.user.id} allowed to access ${path}`);
-
+  console.log(`[Middleware] Authenticated user ${session.user.id} accessing ${path}`);
   return next();
 });
