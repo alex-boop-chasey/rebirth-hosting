@@ -55,12 +55,13 @@ export const POST = async (context: APIContext) => {
 
     console.log(`[API Signup] Attempting signup for email: ${email}`);
 
-    // Sign up with Supabase - email confirmation enabled by default in Supabase
+    // Sign up with Supabase - email confirmation enabled by default
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${new URL(request.url).origin}/onboarding`,  // As per task, but ideally use verify page
+        // This is the key: send user to our verify handler first
+        emailRedirectTo: `${new URL(request.url).origin}/auth/verify`,
         data: {
           full_name: fullName,
         },
@@ -88,15 +89,11 @@ export const POST = async (context: APIContext) => {
 
     console.log(`[API Signup] Success for user: ${data.user?.id || email}. Confirmation email sent.`);
 
-    // Note: Profile will be created via DB trigger or in onboarding API. 
-    // For one-time, we rely on profiles table check.
-
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Signup successful. Please check your email to verify.',
+        message: 'Signup successful. Please check your email to verify your account.',
         userId: data.user?.id,
-        // In production, might return session if auto-confirm, but here email confirm
       }),
       { 
         status: 200, 

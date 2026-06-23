@@ -1,0 +1,58 @@
+---
+import { getSession } from '../../lib/auth.js';
+
+const { url } = Astro;
+const token = url.searchParams.get('token');
+const type = url.searchParams.get('type');
+const redirectTo = url.searchParams.get('redirect_to') || '/onboarding';
+
+console.log(`[Verify] Processing verification - token: ${token?.substring(0, 20)}..., type: ${type}`);
+
+// If we have a token, try to verify it with Supabase
+if (token && type === 'signup') {
+  try {
+    const supabase = await import('../../lib/supabase.js');
+    const serverClient = supabase.createServerSupabaseClient(Astro);
+    
+    const { error } = await serverClient.auth.verifyOtp({
+      token,
+      type: 'signup'
+    });
+
+    if (error) {
+      console.error('[Verify] OTP verification failed:', error.message);
+      return Astro.redirect('/signin?error=verification_failed');
+    }
+
+    console.log('[Verify] Email verified successfully, redirecting to onboarding');
+    return Astro.redirect('/onboarding');
+  } catch (err) {
+    console.error('[Verify] Unexpected error:', err);
+  }
+}
+
+// If no token or already verified, check session and redirect appropriately
+const session = await getSession(Astro.request);
+
+if (session?.user) {
+  const { checkOnboardingStatus } = await import('../../lib/auth.js');
+  const { completed } = await checkOnboardingStatus(session.user.id, Astro.request);
+  
+  if (!completed) {
+    return Astro.redirect('/onboarding');
+  } else {
+    return Astro.redirect('/dashboard');
+  }
+}
+
+// Fallback
+return Astro.redirect('/signin');
+---
+
+<!-- This page should never be seen by users as it redirects immediately -->
+<div class="min-h-screen flex items-center justify-center bg-zinc-950">
+  <div class="text-center">
+    <div class="animate-spin w-8 h-8 border-4 border-amber-400 border-t-transparent rounded-full mx-auto mb-4"></div>
+    <p class="text-zinc-400">Verifying your email...</p>
+  </div>
+</div>
