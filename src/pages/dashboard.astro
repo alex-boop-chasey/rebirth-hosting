@@ -1,0 +1,184 @@
+---
+import Layout from '../components/Layout.astro';
+import Button from '../components/Button.astro';
+import { getSession, checkOnboardingStatus } from '../lib/auth.js';
+
+const sessionResult = await getSession(Astro.request);
+if (!sessionResult?.user) {
+  return Astro.redirect('/signin', 302);
+}
+
+const onboarding = await checkOnboardingStatus(sessionResult.user.id);
+if (!onboarding.completed) {
+  return Astro.redirect('/onboarding', 302);
+}
+
+const profile = onboarding.profile || { full_name: sessionResult.user.email?.split('@')[0] || 'User' };
+const welcomeName = profile.full_name || profile.company_name || 'there';
+---
+
+<Layout title="Dashboard" showNav={false}>
+  <div class="min-h-screen bg-zinc-950">
+    <!-- Top Nav -->
+    <nav class="border-b border-white/10 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-50">
+      <div class="max-w-screen-2xl mx-auto px-8 py-5 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-black font-bold">R</div>
+            <div>
+              <span class="font-semibold text-2xl tracking-tighter bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Rebirth</span>
+            </div>
+          </div>
+          <div class="hidden md:flex items-center gap-8 ml-12 text-sm">
+            <a href="#" class="text-amber-400 font-medium">Dashboard</a>
+            <a href="#" class="text-zinc-400 hover:text-white transition-colors">Hosting</a>
+            <a href="#" class="text-zinc-400 hover:text-white transition-colors">Clients</a>
+            <a href="#" class="text-zinc-400 hover:text-white transition-colors">Billing</a>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-6">
+          <div class="hidden sm:flex items-center gap-3 bg-zinc-900 px-4 py-2 rounded-3xl border border-white/5">
+            <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            <span class="text-xs text-emerald-400 font-medium">All systems operational</span>
+          </div>
+          
+          <div class="flex items-center gap-3">
+            <div class="text-right">
+              <div class="font-medium text-sm">Hi, {welcomeName.split(' ')[0]} 👋</div>
+              <div class="text-[10px] text-zinc-500 -mt-0.5">{profile.company_name || 'Reseller'}</div>
+            </div>
+            <div class="w-9 h-9 bg-zinc-800 rounded-2xl flex items-center justify-center text-xl border border-amber-400/30">
+              👤
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="max-w-screen-2xl mx-auto px-8 py-10">
+      <!-- Welcome Header -->
+      <div class="mb-12">
+        <div class="inline-flex px-6 py-2 rounded-3xl bg-gradient-to-r from-amber-400/10 to-orange-500/10 border border-amber-400/20 text-amber-400 text-sm mb-4">
+          ✨ Welcome to your reseller portal
+        </div>
+        <h1 class="text-6xl font-bold tracking-tighter text-white mb-3">
+          Good morning, {welcomeName}!
+        </h1>
+        <p class="text-2xl text-zinc-400 max-w-lg">Here's what's happening with your hosting business today.</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div class="bg-zinc-900 border border-white/10 rounded-3xl p-8 hover:border-amber-400/30 transition-all group">
+          <div class="flex justify-between items-start mb-8">
+            <div>
+              <div class="text-emerald-400 text-sm font-medium tracking-widest">REVENUE</div>
+              <div class="text-5xl font-semibold tracking-tighter mt-3 text-white">$12,459</div>
+            </div>
+            <div class="text-4xl text-emerald-400/70 group-hover:scale-110 transition-transform">📈</div>
+          </div>
+          <div class="text-xs text-emerald-400 bg-emerald-400/10 w-fit px-3 py-1 rounded-2xl">+18% from last month</div>
+        </div>
+        
+        <div class="bg-zinc-900 border border-white/10 rounded-3xl p-8 hover:border-amber-400/30 transition-all group">
+          <div class="flex justify-between items-start mb-8">
+            <div>
+              <div class="text-amber-400 text-sm font-medium tracking-widest">ACTIVE SITES</div>
+              <div class="text-5xl font-semibold tracking-tighter mt-3 text-white">47</div>
+            </div>
+            <div class="text-4xl text-amber-400/70 group-hover:rotate-12 transition-transform">🌐</div>
+          </div>
+          <div class="text-xs text-amber-400 bg-amber-400/10 w-fit px-3 py-1 rounded-2xl">3 need attention</div>
+        </div>
+        
+        <div class="bg-zinc-900 border border-white/10 rounded-3xl p-8 hover:border-orange-400/30 transition-all group">
+          <div class="flex justify-between items-start mb-8">
+            <div>
+              <div class="text-orange-400 text-sm font-medium tracking-widest">CLIENTS</div>
+              <div class="text-5xl font-semibold tracking-tighter mt-3 text-white">12</div>
+            </div>
+            <div class="text-4xl text-orange-400/70 group-hover:scale-110 transition-transform">👥</div>
+          </div>
+          <div class="text-xs text-orange-400 bg-orange-400/10 w-fit px-3 py-1 rounded-2xl">2 new this week</div>
+        </div>
+        
+        <div class="bg-zinc-900 border border-white/10 rounded-3xl p-8 hover:border-white/30 transition-all group">
+          <div class="flex justify-between items-start mb-8">
+            <div>
+              <div class="text-zinc-400 text-sm font-medium tracking-widest">UPTIME</div>
+              <div class="text-5xl font-semibold tracking-tighter mt-3 text-white">99.98%</div>
+            </div>
+            <div class="text-4xl text-white/70 group-hover:scale-110 transition-transform">🛡️</div>
+          </div>
+          <div class="text-xs text-zinc-400 bg-white/10 w-fit px-3 py-1 rounded-2xl">All green</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-8 bg-zinc-900 border border-white/10 rounded-3xl p-8">
+          <div class="flex items-center justify-between mb-8">
+            <h2 class="text-2xl font-semibold">Recent Activity</h2>
+            <Button variant="outline" class="text-sm px-5 py-2">View all</Button>
+          </div>
+          
+          <div class="space-y-6">
+            <div class="flex gap-6 items-center border-b border-white/10 pb-6">
+              <div class="w-10 h-10 rounded-2xl bg-emerald-400/10 flex items-center justify-center flex-shrink-0 text-xl">🆕</div>
+              <div class="flex-1">
+                <div class="font-medium">New client site deployed</div>
+                <div class="text-sm text-zinc-400">acmecorp.example.com • 2m ago</div>
+              </div>
+              <div class="text-emerald-400 text-xs font-mono bg-emerald-900/50 px-3 py-1 rounded-xl">LIVE</div>
+            </div>
+            
+            <div class="flex gap-6 items-center border-b border-white/10 pb-6">
+              <div class="w-10 h-10 rounded-2xl bg-amber-400/10 flex items-center justify-center flex-shrink-0 text-xl">📧</div>
+              <div class="flex-1">
+                <div class="font-medium">Client invoice #INV-3921 sent</div>
+                <div class="text-sm text-zinc-400">to sarah@design.co • 47m ago</div>
+              </div>
+              <div class="px-4 py-1 text-xs bg-amber-400 text-black rounded-2xl font-medium">$249</div>
+            </div>
+            
+            <div class="flex gap-6 items-center">
+              <div class="w-10 h-10 rounded-2xl bg-blue-400/10 flex items-center justify-center flex-shrink-0 text-xl">🔄</div>
+              <div class="flex-1">
+                <div class="font-medium">Backup completed for 12 sites</div>
+                <div class="text-sm text-zinc-400">Daily automated backup • Yesterday</div>
+              </div>
+              <div class="text-xs text-zinc-500">SUCCESS</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="lg:col-span-4 space-y-6">
+          <div class="bg-zinc-900 border border-white/10 rounded-3xl p-8">
+            <h3 class="font-semibold mb-6 flex items-center gap-2">
+              <span>Quick Actions</span>
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+              <a href="#" class="group bg-zinc-800 hover:bg-amber-400 hover:text-black border border-transparent hover:border-amber-400 p-6 rounded-3xl transition-all text-center">
+                <div class="text-3xl mb-4 group-hover:scale-110 transition-transform">➕</div>
+                <div class="font-medium text-sm">New Site</div>
+              </a>
+              <a href="#" class="group bg-zinc-800 hover:bg-orange-400 hover:text-black border border-transparent hover:border-orange-400 p-6 rounded-3xl transition-all text-center">
+                <div class="text-3xl mb-4 group-hover:scale-110 transition-transform">👤</div>
+                <div class="font-medium text-sm">Add Client</div>
+              </a>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-br from-amber-400/5 to-orange-500/5 border border-amber-400/20 rounded-3xl p-8 text-center">
+            <div class="text-amber-400 mb-2 text-sm font-medium">NEED HELP?</div>
+            <div class="font-semibold text-lg mb-3">Talk to our hosting experts</div>
+            <Button variant="secondary" class="w-full text-sm">Schedule a call</Button>
+            <div class="text-[10px] text-amber-400/70 mt-6">Average response time: &lt; 4 minutes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

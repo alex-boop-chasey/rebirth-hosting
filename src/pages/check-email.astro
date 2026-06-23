@@ -1,0 +1,84 @@
+---
+import Layout from '../components/Layout.astro';
+import Button from '../components/Button.astro';
+---
+
+<Layout title="Check Your Email" showNav={true}>
+  <div class="min-h-screen flex items-center justify-center pt-16 px-6">
+    <div class="max-w-md w-full text-center">
+      <div class="mx-auto mb-10 w-24 h-24 bg-gradient-to-br from-amber-400/20 to-orange-500/20 rounded-full flex items-center justify-center border border-amber-400/30">
+        <div class="text-[64px] animate-bounce">📧</div>
+      </div>
+      
+      <h1 class="text-4xl font-bold tracking-tighter mb-4 text-white">Check your email</h1>
+      
+      <div class="bg-zinc-900/80 border border-amber-400/20 rounded-3xl p-10 mb-8">
+        <p class="text-zinc-300 text-lg leading-relaxed mb-6">
+          We've sent a verification link to your email address. 
+          Please click the link to verify your account and continue to onboarding.
+        </p>
+        
+        <div id="email-display" class="inline-flex items-center gap-2 bg-zinc-800 px-6 py-3 rounded-2xl text-amber-400 font-mono text-sm mb-8">
+          <!-- populated by JS -->
+        </div>
+        
+        <div class="space-y-4">
+          <Button href="/signin" variant="outline" class="w-full">
+            Back to Sign In
+          </Button>
+          
+          <p onclick="resendEmail()" class="text-amber-400 hover:text-orange-400 cursor-pointer text-sm font-medium transition-colors inline-flex items-center gap-1.5 mx-auto">
+            <span>↻</span> Resend verification email
+          </p>
+        </div>
+      </div>
+      
+      <div class="text-xs text-zinc-500 max-w-xs mx-auto">
+        Didn't receive the email? Check your spam folder or contact support@rebirth.hosting
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Get email from URL query param
+    function getEmailFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('email') || 'your@email.com';
+    }
+    
+    const emailDisplay = document.getElementById('email-display');
+    emailDisplay.innerHTML = `
+      📬 <span class="font-medium">${getEmailFromUrl()}</span>
+    `;
+    
+    function resendEmail() {
+      const email = getEmailFromUrl();
+      if (email === 'your@email.com') return;
+      
+      const btns = document.querySelectorAll('button, a');
+      // Simple UX feedback
+      const originalTexts = [];
+      // For demo, show toast like message
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#451a03; color:#fcd34d; padding:12px 24px; border-radius:9999px; font-size:14px; box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.3); z-index:100; white-space:nowrap;';
+      toast.textContent = '✅ Verification email resent!';
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.transition = 'all 0.3s ease';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translate(-50%, 20px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+      
+      console.log(`[Demo] Resend verification to ${email}`);
+    }
+    
+    // Add keyboard support
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+      }
+    });
+  </script>
+</Layout>

@@ -1,0 +1,179 @@
+---
+import Layout from '../components/Layout.astro';
+import Button from '../components/Button.astro';
+import Input from '../components/Input.astro';
+---
+
+<Layout title="Sign Up" showNav={true}>
+  <div class="min-h-screen flex items-center justify-center pt-20 pb-12 px-6">
+    <div class="max-w-md w-full">
+      <!-- Header -->
+      <div class="text-center mb-10">
+        <div class="mx-auto w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-orange-500/20">
+          <span class="text-4xl">🚀</span>
+        </div>
+        <h1 class="text-4xl font-bold tracking-tighter mb-3 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 bg-clip-text text-transparent">
+          Create your account
+        </h1>
+        <p class="text-zinc-400">Join the Rebirth Hosting reseller platform</p>
+      </div>
+
+      <!-- Form Card -->
+      <div class="bg-zinc-900/70 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+        <form id="signup-form" class="space-y-6">
+          <Input 
+            label="Full Name" 
+            name="fullName" 
+            placeholder="Alex Rivera" 
+            required 
+          />
+          
+          <Input 
+            label="Email Address" 
+            name="email" 
+            type="email" 
+            placeholder="you@company.com" 
+            required 
+          />
+          
+          <Input 
+            label="Password" 
+            name="password" 
+            type="password" 
+            placeholder="••••••••" 
+            required 
+          />
+
+          <!-- Turnstile -->
+          <div class="pt-2">
+            <div id="turnstile-widget" class="flex justify-center"></div>
+            <p id="turnstile-error" class="text-rose-400 text-xs mt-2 text-center hidden"></p>
+          </div>
+
+          <div id="form-error" class="hidden text-rose-400 text-sm text-center p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl"></div>
+
+          <Button type="submit" id="submit-btn" class="w-full py-4 text-base">
+            Create Account
+          </Button>
+        </form>
+
+        <div class="mt-8 text-center text-sm text-zinc-400">
+          Already have an account? 
+          <a href="/signin" class="text-amber-400 hover:text-amber-300 font-medium transition-colors">Sign in</a>
+        </div>
+      </div>
+
+      <div class="mt-8 text-center">
+        <p class="text-xs text-zinc-500">Protected by Cloudflare Turnstile</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let turnstileWidgetId = null;
+    let isSubmitting = false;
+
+    function renderTurnstile() {
+      if (typeof turnstile !== 'undefined') {
+        turnstileWidgetId = turnstile.render('#turnstile-widget', {
+          sitekey: import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA', // fallback for dev
+          theme: 'dark',
+          size: 'normal',
+          callback: function(token) {
+            console.log('Turnstile verified');
+            document.getElementById('turnstile-error').classList.add('hidden');
+          },
+          'error-callback': function(error) {
+            const errorEl = document.getElementById('turnstile-error');
+            errorEl.textContent = 'Verification failed. Please try again.';
+            errorEl.classList.remove('hidden');
+          }
+        });
+      } else {
+        console.warn('Turnstile not loaded yet');
+        setTimeout(renderTurnstile, 500);
+      }
+    }
+
+    // Initialize Turnstile
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load turnstile if not already
+      if (typeof turnstile === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        script.async = true;
+        script.onload = renderTurnstile;
+        document.head.appendChild(script);
+      } else {
+        renderTurnstile();
+      }
+
+      const form = document.getElementById('signup-form');
+      const submitBtn = document.getElementById('submit-btn');
+      const errorDiv = document.getElementById('form-error');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault(); // No form reset, handle manually
+        if (isSubmitting) return;
+
+        const token = turnstileWidgetId ? turnstile.getResponse(turnstileWidgetId) : null;
+        if (!token) {
+          const errorEl = document.getElementById('turnstile-error');
+          errorEl.textContent = 'Please complete the verification';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        isSubmitting = true;
+        submitBtn.innerHTML = `
+          <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          Creating account...
+        `;
+        submitBtn.disabled = true;
+        errorDiv.classList.add('hidden');
+
+        const formData = new FormData(form);
+        const data = {
+          fullName: formData.get('fullName'),
+          email: formData.get('email'),
+          password: formData.get('password'),
+          turnstileToken: token
+        };
+
+        try {
+          const response = await fetch('/api/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            // Success - redirect to check email
+            window.location.href = '/check-email?email=' + encodeURIComponent(data.email);
+          } else {
+            // Show error
+            errorDiv.textContent = result.error || 'Signup failed. Please try again.';
+            errorDiv.classList.remove('hidden');
+            
+            // Reset Turnstile on error
+            if (turnstileWidgetId) {
+              turnstile.reset(turnstileWidgetId);
+            }
+          }
+        } catch (err) {
+          errorDiv.textContent = 'Network error. Please check your connection and try again.';
+          errorDiv.classList.remove('hidden');
+        } finally {
+          isSubmitting = false;
+          submitBtn.innerHTML = 'Create Account';
+          submitBtn.disabled = false;
+        }
+      });
+    });
+  </script>
+</Layout>

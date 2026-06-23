@@ -1,0 +1,52 @@
+---
+interface Props {
+  variant?: 'primary' | 'secondary' | 'outline';
+  type?: 'button' | 'submit';
+  loading?: boolean;
+  class?: string;
+  href?: string;
+  children: any;
+}
+
+const { 
+  variant = 'primary', 
+  type = 'button', 
+  loading = false, 
+  class: className = '', 
+  href,
+  ...props 
+} = Astro.props;
+
+const baseClasses = 'px-8 py-3.5 rounded-2xl font-semibold transition-all active:scale-[0.985] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950 focus:ring-amber-400';
+
+const variants = {
+  primary: 'bg-gradient-to-r from-amber-400 to-orange-500 text-black hover:brightness-110 shadow-lg shadow-orange-500/20',
+  secondary: 'bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700',
+  outline: 'border border-amber-400/30 hover:bg-amber-400/10 text-amber-400 hover:text-amber-300',
+};
+
+const variantClass = variants[variant];
+---
+
+{
+  href ? (
+    <a href={href} class={`${baseClasses} ${variantClass} ${className}`} {...props}>
+      <slot />
+    </a>
+  ) : (
+    <button 
+      type={type}
+      class={`${baseClasses} ${variantClass} ${className}`}
+      disabled={loading}
+      {...props}
+    >
+      {loading && (
+        <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+      )}
+      <slot />
+    </button>
+  )
+}
