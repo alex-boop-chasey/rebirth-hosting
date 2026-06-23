@@ -17,6 +17,12 @@ export const POST = async (context: APIContext) => {
   try {
     // Parse and validate body
     const body = await request.json();
+    console.log('[API Signup] Request body received:', { 
+      email: body.email, 
+      hasFullName: !!body.fullName,
+      hasTurnstileToken: !!body.turnstileToken 
+    });
+    
     const parsed = signupSchema.safeParse(body);
     
     if (!parsed.success) {
@@ -25,7 +31,8 @@ export const POST = async (context: APIContext) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: errorMessage 
+          error: errorMessage,
+          details: parsed.error.issues 
         }),
         { 
           status: 400, 
@@ -36,31 +43,36 @@ export const POST = async (context: APIContext) => {
 
     const { email, password, fullName, turnstileToken } = parsed.data;
     const ip = getClientIP(request);
+    console.log(`[API Signup] Validated data for ${email}. IP: ${ip || 'unknown'}`);
 
     // Verify Turnstile
+    console.log('[API Signup] Verifying Turnstile token...');
     const turnstileResult = await verifyTurnstileToken(turnstileToken, ip, context);
     if (!turnstileResult.success) {
       console.warn('[API Signup] Turnstile failed:', turnstileResult.error);
       return new Response(
-        JSON.stringify({ success: false, error: turnstileResult.error }),
+        JSON.stringify({ 
+          success: false, 
+          error: turnstileResult.error || 'Turnstile verification failed' 
+        }),
         { 
           status: 403, 
           headers: { 'Content-Type': 'application/json' } 
         }
       );
     }
+    console.log('[API Signup] Turnstile verification passed');
 
     // Create Supabase client
     const supabase = createServerSupabaseClient(context);
 
-    console.log(`[API Signup] Attempting signup for email: ${email}`);
+    console.log(`[API Signup] Attempting Supabase signup for: ${email}`);
 
-    // Sign up with Supabase - email confirmation enabled by default
+    // Sign up with Supabase
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // This is the key: send user to our verify handler first
         emailRedirectTo: `${new URL(request.url).origin}/auth/verify`,
         data: {
           full_name: fullName,
@@ -69,31 +81,49 @@ export const POST = async (context: APIContext) => {
     });
 
     if (error) {
-      console.error('[API Signup] Supabase error:', error.message);
-      let userError = 'Signup failed';
+      console.error('[API Signup] Supabase error:', {
+        message: error.message,
+        status: error.status,
+        code: error.code,
+        details: error
+      });
       
-      if (error.message.includes('already registered')) {
-        userError = 'User already exists. Try signing in.';
-      } else if (error.message.includes('Password')) {
+      let userError = 'Signup failed';
+      let statusCode = 400;
+      
+      if (error.message.includes('already registered') || error.code === '225') {
+        userError = 'An account with this email already exists. Please sign in instead.';
+        statusCode = 409;
+      } else if (error.message.includes('Password') || error.message.includes('password')) {
         userError = error.message;
+      } else if (error.message.includes('Email')) {
+        userError = 'Invalid email address';
+      } else {
+        userError = error.message; // Return actual error during development
       }
       
       return new Response(
-        JSON.stringify({ success: false, error: userError }),
+        JSON.stringify({ 
+          success: false, 
+          error: userError,
+          supabaseError: error.message 
+        }),
         { 
-          status: 400, 
+          status: statusCode, 
           headers: { 'Content-Type': 'application/json' } 
         }
       );
     }
 
-    console.log(`[API Signup] Success for user: ${data.user?.id || email}. Confirmation email sent.`);
+    console.log(`[API Signup] SUCCESS! User created: ${data.user?.id || email}`);
+    console.log(`[API Signup] Confirmation email sent to ${email}. Redirect URL was set to /auth/verify`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Signup successful. Please check your email to verify your account.',
-        userId: data.user?.id,
+        message: 'Account created successfully. Please check your email to verify your account.',
+        email: email,
+        userId: data.user?.id
       }),
       { 
         status: 200, 
@@ -106,7 +136,8 @@ export const POST = async (context: APIContext) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: 'Internal server error. Please try again.' 
+        error: 'An unexpected error occurred. Please try again.',
+        debug: err.message 
       }),
       { 
         status: 500, 
