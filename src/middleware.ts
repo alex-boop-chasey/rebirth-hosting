@@ -1,19 +1,26 @@
 import { defineMiddleware } from 'astro:middleware';
-import { getSession, checkOnboardingStatus, createRedirectResponse } from './lib/auth.js';
+import { getSession, createRedirectResponse } from './lib/auth.js';
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const { url, cookies } = context;
+  const { url } = context;
   const path = url.pathname;
 
   console.log(`[Middleware] Request to: ${path}`);
 
   // Public paths that don't require auth
-  const publicPaths = ['/', '/signup', '/signin', '/check-email', '/auth/verify'];
+  const publicPaths = [
+    '/', 
+    '/signup', 
+    '/signin', 
+    '/check-email', 
+    '/auth/verify'
+  ];
+  
   if (publicPaths.includes(path) || path.startsWith('/api/')) {
     return next();
   }
 
-  // Protected paths
+  // Protected paths - TEMPORARILY DISABLED onboarding check as requested
   const session = await getSession(context);
   
   if (!session?.user) {
@@ -21,26 +28,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return createRedirectResponse('/signin');
   }
 
-  const userId = session.user.id;
-  
-  // Check if user needs to complete onboarding (one-time)
-  if (path !== '/onboarding') {
-    const { completed } = await checkOnboardingStatus(userId, context);
-    
-    if (!completed) {
-      console.log(`[Middleware] Onboarding not completed - redirecting user ${userId} to /onboarding`);
-      return createRedirectResponse('/onboarding');
-    }
-  }
-
-  // Dashboard and other protected routes are allowed if onboarding is done
-  if (path === '/onboarding') {
-    const { completed } = await checkOnboardingStatus(userId, context);
-    if (completed) {
-      console.log(`[Middleware] Onboarding already completed - redirecting to /dashboard`);
-      return createRedirectResponse('/dashboard');
-    }
-  }
+  // For now, allow all authenticated users to reach dashboard
+  // Onboarding enforcement is disabled until we re-enable it
+  console.log(`[Middleware] Authenticated user ${session.user.id} allowed to access ${path}`);
 
   return next();
 });
