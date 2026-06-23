@@ -9,17 +9,17 @@ import Input from '../components/Input.astro';
     <div class="max-w-md w-full">
       <!-- Header -->
       <div class="text-center mb-10">
-        <div class="mx-auto w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-400 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-orange-500/20">
+        <div class="mx-auto w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-orange-500/20">
           <span class="text-4xl">🚀</span>
         </div>
-        <h1 class="text-4xl font-bold tracking-tighter mb-3 bg-gradient-to-r from-orange-400 via-amber-300 to-orange-400 bg-clip-text text-transparent">
+        <h1 class="text-4xl font-bold tracking-tighter mb-3 bg-gradient-to-r from-amber-400 via-orange-500 to-amber-400 bg-clip-text text-transparent">
           Create your account
         </h1>
         <p class="text-zinc-400">Join the Rebirth Hosting reseller platform</p>
       </div>
 
       <!-- Form Card -->
-      <div class="bg-zinc-900/70 border border-orange-500/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
+      <div class="bg-zinc-900/70 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
         <form id="signup-form" class="space-y-6">
           <Input 
             label="Email Address" 
@@ -40,20 +40,20 @@ import Input from '../components/Input.astro';
           <!-- Turnstile -->
           <div class="pt-2">
             <div id="turnstile-container" class="flex justify-center min-h-[70px]"></div>
-            <p id="turnstile-status" class="text-orange-400 text-xs mt-2 text-center hidden">Verifying security...</p>
+            <p id="turnstile-status" class="text-amber-400 text-xs mt-2 text-center hidden">Verifying security...</p>
             <p id="turnstile-error" class="text-rose-400 text-xs mt-2 text-center hidden"></p>
           </div>
 
           <div id="form-error" class="hidden text-rose-400 text-sm text-center p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl"></div>
 
-          <Button type="submit" id="submit-btn" disabled class="w-full py-4 text-base bg-gradient-to-r from-orange-500 to-amber-400 hover:brightness-110">
+          <Button type="submit" id="submit-btn" disabled class="w-full py-4 text-base">
             Complete security check to continue
           </Button>
         </form>
 
         <div class="mt-8 text-center text-sm text-zinc-400">
           Already have an account? 
-          <a href="/signin" class="text-orange-400 hover:text-amber-300 font-medium transition-colors">Sign in</a>
+          <a href="/signin" class="text-amber-400 hover:text-amber-300 font-medium transition-colors">Sign in</a>
         </div>
       </div>
 
@@ -118,7 +118,7 @@ import Input from '../components/Input.astro';
           turnstileToken = token;
           document.getElementById('submit-btn').disabled = false;
           document.getElementById('turnstile-status').classList.add('hidden');
-          console.log('%c✅ Turnstile verified successfully', 'color:#f59e0b; font-weight:bold');
+          console.log('%c✅ Turnstile verified successfully', 'color:#fbbf24; font-weight:bold');
         },
         'error-callback': function(errorCode) {
           console.error('Turnstile error code:', errorCode);
@@ -133,7 +133,7 @@ import Input from '../components/Input.astro';
         }
       });
       
-      console.log('%c🔒 Turnstile widget initialized with key:', 'color:#f59e0b', siteKey.substring(0, 15) + '...');
+      console.log('%c🔒 Turnstile widget initialized with key:', 'color:#fbbf24', siteKey.substring(0, 15) + '...');
     } catch (e) {
       console.error('Failed to render Turnstile widget:', e);
       const errorEl = document.getElementById('turnstile-error');

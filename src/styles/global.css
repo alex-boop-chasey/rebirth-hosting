@@ -1,12 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #f6821f; /* Cloudflare-inspired orange */
-  --color-primary-foreground: #ffffff;
-  --color-accent: #fbbf24;   /* Warm yellow accent */
+  --color-primary: #f59e0b;
+  --color-primary-foreground: #000000;
 }
 
-/* Base styles for Rebirth Hosting - Cloudflare-inspired dark theme */
+/* Base styles for Rebirth Hosting */
 body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
@@ -15,18 +14,12 @@ h1, h2, h3 {
   font-feature-settings: "kern" 1, "liga" 1;
 }
 
-/* Cloudflare-inspired focus rings - more orange toned down */
-.focus\:ring-orange-500:focus {
-  --tw-ring-color: rgb(249 115 22);
+/* Custom focus styles matching previous amber theme */
+.focus\:ring-amber-400:focus {
+  --tw-ring-color: rgb(245 158 11);
 }
 
 /* Smooth transitions for all interactive elements */
 a, button, .btn {
-  transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
-}
-
-/* Subtle Cloudflare-style hover effects on dark bg */
-.card-hover:hover {
-  box-shadow: 0 0 0 1px rgb(251 191 36 / 0.15);
-  transform: translateY(-1px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
