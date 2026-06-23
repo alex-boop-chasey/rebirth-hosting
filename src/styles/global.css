@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary: #f59e0b;
+  --color-primary-foreground: #000000;
+}
+
+/* Base styles for Rebirth Hosting */
+body {
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+h1, h2, h3 {
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* Custom focus styles matching previous amber theme */
+.focus\:ring-amber-400:focus {
+  --tw-ring-color: rgb(245 158 11);
+}
+
+/* Smooth transitions for all interactive elements */
+a, button, .btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
