@@ -46,14 +46,15 @@ import Input from '../components/Input.astro';
 
           <!-- Turnstile -->
           <div class="pt-2">
-            <div id="turnstile-widget" class="flex justify-center"></div>
+            <div id="turnstile-container" class="flex justify-center min-h-[70px]"></div>
+            <p id="turnstile-status" class="text-amber-400 text-xs mt-2 text-center hidden">Verifying security...</p>
             <p id="turnstile-error" class="text-rose-400 text-xs mt-2 text-center hidden"></p>
           </div>
 
           <div id="form-error" class="hidden text-rose-400 text-sm text-center p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl"></div>
 
-          <Button type="submit" id="submit-btn" class="w-full py-4 text-base">
-            Create Account
+          <Button type="submit" id="submit-btn" disabled class="w-full py-4 text-base">
+            Complete security check to continue
           </Button>
         </form>
 
@@ -68,112 +69,149 @@ import Input from '../components/Input.astro';
       </div>
     </div>
   </div>
+</Layout>
 
-  <script>
-    let turnstileWidgetId = null;
-    let isSubmitting = false;
+<script>
+  let turnstileToken = '';
+  let widgetId = null;
+  let isSubmitting = false;
 
-    function renderTurnstile() {
-      if (typeof turnstile !== 'undefined') {
-        turnstileWidgetId = turnstile.render('#turnstile-widget', {
-          sitekey: import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA', // fallback for dev
-          theme: 'dark',
-          size: 'normal',
-          callback: function(token) {
-            console.log('Turnstile verified');
-            document.getElementById('turnstile-error').classList.add('hidden');
-          },
-          'error-callback': function(error) {
-            const errorEl = document.getElementById('turnstile-error');
-            errorEl.textContent = 'Verification failed. Please try again.';
-            errorEl.classList.remove('hidden');
-          }
-        });
-      } else {
-        console.warn('Turnstile not loaded yet');
-        setTimeout(renderTurnstile, 500);
-      }
+  const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
+
+  function showError(message) {
+    const errorEl = document.getElementById('form-error');
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  }
+
+  function hideError() {
+    const errorEl = document.getElementById('form-error');
+    errorEl.classList.add('hidden');
+  }
+
+  function resetTurnstile() {
+    if (typeof turnstile !== 'undefined' && widgetId) {
+      turnstile.reset(widgetId);
+      turnstileToken = '';
+      document.getElementById('submit-btn').disabled = true;
+    }
+  }
+
+  function initializeTurnstile() {
+    const container = document.getElementById('turnstile-container');
+    
+    if (typeof turnstile === 'undefined') {
+      console.warn('[Turnstile] Script not loaded yet, retrying...');
+      setTimeout(initializeTurnstile, 300);
+      return;
     }
 
+    try {
+      widgetId = turnstile.render(container, {
+        sitekey: siteKey,
+        theme: 'dark',
+        size: 'normal',
+        retry: 'auto',
+        callback: function(token) {
+          turnstileToken = token;
+          document.getElementById('submit-btn').disabled = false;
+          document.getElementById('turnstile-status').classList.add('hidden');
+          console.log('%c✅ Turnstile verified successfully', 'color:#fbbf24; font-weight:bold');
+        },
+        'error-callback': function(errorCode) {
+          console.error('Turnstile error:', errorCode);
+          const errorEl = document.getElementById('turnstile-error');
+          errorEl.textContent = 'Security check failed. Please refresh the page.';
+          errorEl.classList.remove('hidden');
+          document.getElementById('submit-btn').disabled = true;
+        },
+        'expired-callback': function() {
+          console.log('Turnstile token expired');
+          resetTurnstile();
+        }
+      });
+      
+      console.log('%cTurnstile widget initialized with production-ready settings', 'color:#22c55e');
+    } catch (e) {
+      console.error('Failed to render Turnstile:', e);
+    }
+  }
+
+  // Main form handler
+  document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('signup-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const statusEl = document.getElementById('turnstile-status');
+
     // Initialize Turnstile
-    document.addEventListener('DOMContentLoaded', () => {
-      // Load turnstile if not already
-      if (typeof turnstile === 'undefined') {
-        const script = document.createElement('script');
-        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-        script.async = true;
-        script.onload = renderTurnstile;
-        document.head.appendChild(script);
-      } else {
-        renderTurnstile();
+    initializeTurnstile();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (isSubmitting) return;
+      
+      hideError();
+      isSubmitting = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      const fullName = form.querySelector('[name="fullName"]').value.trim();
+      const email = form.querySelector('[name="email"]').value.trim();
+      const password = form.querySelector('[name="password"]').value;
+
+      if (!email || !password) {
+        showError('Please fill in all fields');
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+        return;
       }
 
-      const form = document.getElementById('signup-form');
-      const submitBtn = document.getElementById('submit-btn');
-      const errorDiv = document.getElementById('form-error');
+      if (!turnstileToken) {
+        showError('Please complete the security check');
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+        return;
+      }
 
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault(); // No form reset, handle manually
-        if (isSubmitting) return;
+      statusEl.textContent = 'Verifying with server...';
+      statusEl.classList.remove('hidden');
 
-        const token = turnstileWidgetId ? turnstile.getResponse(turnstileWidgetId) : null;
-        if (!token) {
-          const errorEl = document.getElementById('turnstile-error');
-          errorEl.textContent = 'Please complete the verification';
-          errorEl.classList.remove('hidden');
+      try {
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName,
+            email,
+            password,
+            turnstileToken
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          showError(result.error || 'Signup failed');
+          resetTurnstile();
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account';
           return;
         }
 
-        isSubmitting = true;
-        submitBtn.innerHTML = `
-          <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-          </svg>
-          Creating account...
-        `;
-        submitBtn.disabled = true;
-        errorDiv.classList.add('hidden');
-
-        const formData = new FormData(form);
-        const data = {
-          fullName: formData.get('fullName'),
-          email: formData.get('email'),
-          password: formData.get('password'),
-          turnstileToken: token
-        };
-
-        try {
-          const response = await fetch('/api/signup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-          });
-
-          const result = await response.json();
-
-          if (result.success) {
-            // Success - redirect to check email
-            window.location.href = '/check-email?email=' + encodeURIComponent(data.email);
-          } else {
-            // Show error
-            errorDiv.textContent = result.error || 'Signup failed. Please try again.';
-            errorDiv.classList.remove('hidden');
-            
-            // Reset Turnstile on error
-            if (turnstileWidgetId) {
-              turnstile.reset(turnstileWidgetId);
-            }
-          }
-        } catch (err) {
-          errorDiv.textContent = 'Network error. Please check your connection and try again.';
-          errorDiv.classList.remove('hidden');
-        } finally {
-          isSubmitting = false;
-          submitBtn.innerHTML = 'Create Account';
-          submitBtn.disabled = false;
-        }
-      });
+        // Success - redirect to check email page
+        window.location.href = `/check-email?email=${encodeURIComponent(email)}`;
+        
+      } catch (err) {
+        console.error('Signup error:', err);
+        showError('Connection error. Please try again.');
+        resetTurnstile();
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
     });
-  </script>
-</Layout>
+  });
+</script>
