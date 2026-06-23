@@ -1,11 +1,11 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #fbbf24; /* More yellow-400 */
+  --color-primary: #fbbf24; /* Yellow-400 base */
   --color-primary-foreground: #000000;
 }
 
-/* Base styles for Rebirth Hosting - Yellow-focused dark theme */
+/* Base styles for Rebirth Hosting - Yellow-dominant with orange transition */
 body {
   font-feature-settings: "rlig" 1, "calt" 1;
 }
