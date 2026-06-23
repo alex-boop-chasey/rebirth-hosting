@@ -22,13 +22,6 @@ import Input from '../components/Input.astro';
       <div class="bg-zinc-900/70 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
         <form id="signup-form" class="space-y-6">
           <Input 
-            label="Full Name" 
-            name="fullName" 
-            placeholder="Alex Rivera" 
-            required 
-          />
-          
-          <Input 
             label="Email Address" 
             name="email" 
             type="email" 
@@ -76,7 +69,6 @@ import Input from '../components/Input.astro';
   let widgetId = null;
   let isSubmitting = false;
 
-  // Support both naming conventions from .env_shared
   const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || import.meta.env.TURNSTILE_SITE_KEY;
 
   function showError(message) {
@@ -150,13 +142,11 @@ import Input from '../components/Input.astro';
     }
   }
 
-  // Main form handler
   document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('signup-form');
     const submitBtn = document.getElementById('submit-btn');
     const statusEl = document.getElementById('turnstile-status');
 
-    // Initialize Turnstile
     initializeTurnstile();
 
     form.addEventListener('submit', async (e) => {
@@ -168,7 +158,6 @@ import Input from '../components/Input.astro';
       submitBtn.disabled = true;
       submitBtn.textContent = 'Creating account...';
 
-      const fullName = form.querySelector('[name="fullName"]').value.trim();
       const email = form.querySelector('[name="email"]').value.trim();
       const password = form.querySelector('[name="password"]').value;
 
@@ -196,7 +185,6 @@ import Input from '../components/Input.astro';
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fullName,
             email,
             password,
             turnstileToken
@@ -214,7 +202,6 @@ import Input from '../components/Input.astro';
           return;
         }
 
-        // Success - redirect to check email page
         window.location.href = `/check-email?email=${encodeURIComponent(email)}`;
         
       } catch (err) {

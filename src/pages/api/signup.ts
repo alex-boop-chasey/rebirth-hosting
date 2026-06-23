@@ -6,7 +6,6 @@ import { z } from 'zod';
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  fullName: z.string().optional(),
   turnstileToken: z.string().min(1, 'Turnstile verification required'),
 });
 
@@ -15,11 +14,9 @@ export const POST = async (context: APIContext) => {
   console.log('[API Signup] Received signup request');
 
   try {
-    // Parse and validate body
     const body = await request.json();
     console.log('[API Signup] Request body received:', { 
       email: body.email, 
-      hasFullName: !!body.fullName,
       hasTurnstileToken: !!body.turnstileToken 
     });
     
@@ -41,11 +38,10 @@ export const POST = async (context: APIContext) => {
       );
     }
 
-    const { email, password, fullName, turnstileToken } = parsed.data;
+    const { email, password, turnstileToken } = parsed.data;
     const ip = getClientIP(request);
     console.log(`[API Signup] Validated data for ${email}. IP: ${ip || 'unknown'}`);
 
-    // Verify Turnstile
     console.log('[API Signup] Verifying Turnstile token...');
     const turnstileResult = await verifyTurnstileToken(turnstileToken, ip, context);
     if (!turnstileResult.success) {
@@ -63,20 +59,14 @@ export const POST = async (context: APIContext) => {
     }
     console.log('[API Signup] Turnstile verification passed');
 
-    // Create Supabase client
     const supabase = createServerSupabaseClient(context);
-
     console.log(`[API Signup] Attempting Supabase signup for: ${email}`);
 
-    // Sign up with Supabase
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${new URL(request.url).origin}/auth/verify`,
-        data: {
-          full_name: fullName,
-        },
       },
     });
 
@@ -99,7 +89,7 @@ export const POST = async (context: APIContext) => {
       } else if (error.message.includes('Email')) {
         userError = 'Invalid email address';
       } else {
-        userError = error.message; // Return actual error during development
+        userError = error.message;
       }
       
       return new Response(
@@ -116,7 +106,7 @@ export const POST = async (context: APIContext) => {
     }
 
     console.log(`[API Signup] SUCCESS! User created: ${data.user?.id || email}`);
-    console.log(`[API Signup] Confirmation email sent to ${email}. Redirect URL was set to /auth/verify`);
+    console.log(`[API Signup] Confirmation email sent to ${email}. Will redirect to /auth/verify after confirmation.`);
 
     return new Response(
       JSON.stringify({ 
