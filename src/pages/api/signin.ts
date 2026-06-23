@@ -1,13 +1,6 @@
 import type { APIContext } from 'astro';
 import { createServerSupabaseClient } from '../../lib/supabase.js';
 import { verifyTurnstileToken, getClientIP } from '../../lib/turnstile.js';
-import { z } from 'zod';
-
-const signinSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
-  turnstileToken: z.string().optional(),
-});
 
 export const POST = async (context: APIContext) => {
   const { request } = context;
@@ -15,33 +8,31 @@ export const POST = async (context: APIContext) => {
 
   try {
     const body = await request.json();
-    const parsed = signinSchema.safeParse(body);
-    
-    if (!parsed.success) {
-      const errorMessage = parsed.error.issues[0]?.message || 'Validation failed';
-      console.warn('[API Signin] Validation failed:', parsed.error.issues);
+    const { email, password, turnstileToken } = body;
+
+    if (!email || !password) {
       return new Response(
-        JSON.stringify({ success: false, error: errorMessage }),
+        JSON.stringify({ success: false, error: 'Email and password are required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const { email, password, turnstileToken } = parsed.data;
     const ip = getClientIP(request);
 
-    // Optional Turnstile for signin (recommended in prod to prevent brute force)
+    // Verify Turnstile (recommended for signin to prevent brute force attacks)
     if (turnstileToken) {
       const turnstileResult = await verifyTurnstileToken(turnstileToken, ip, context);
       if (!turnstileResult.success) {
         console.warn('[API Signin] Turnstile failed:', turnstileResult.error);
         return new Response(
-          JSON.stringify({ success: false, error: turnstileResult.error }),
+          JSON.stringify({ success: false, error: turnstileResult.error || 'Turnstile verification failed' }),
           { status: 403, headers: { 'Content-Type': 'application/json' } }
         );
       }
+      console.log('[API Signin] Turnstile verification passed');
     }
 
-    const supabase = createServerSupabaseClient(request);
+    const supabase = createServerSupabaseClient(context);
 
     console.log(`[API Signin] Attempting signin for: ${email}`);
 
@@ -51,7 +42,7 @@ export const POST = async (context: APIContext) => {
     });
 
     if (error) {
-      console.error('[API Signin] Supabase auth error:', error.message);
+      console.error('[API Signin] Supabase error:', error.message);
       let userError = 'Invalid credentials';
       
       if (error.message.includes('Email not confirmed')) {
@@ -64,18 +55,13 @@ export const POST = async (context: APIContext) => {
       );
     }
 
-    console.log(`[API Signin] Successful for user: ${data.user.id}`);
-
-    // After signin, the session is set via cookies by Supabase SSR client
-    // In practice, for API, we may need to set cookies in response headers.
-    // For simplicity, client should call supabase.auth.setSession or use the returned data.
+    console.log(`[API Signin] Successful login for user: ${data.user.id}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: 'Sign in successful',
-        session: data.session ? { user: { id: data.user.id, email: data.user.email } } : null,
-        redirect: '/dashboard' // Client decides based on onboarding status
+        redirect: '/dashboard'
       }),
       { 
         status: 200, 
