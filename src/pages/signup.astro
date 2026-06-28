@@ -1,217 +1,104 @@
 ---
-import Layout from '../components/Layout.astro';
-import Button from '../components/Button.astro';
-import Input from '../components/Input.astro';
+import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Sign Up" showNav={true}>
-  <div class="min-h-screen flex items-center justify-center pt-20 pb-12 px-6">
-    <div class="max-w-md w-full">
-      <!-- Header -->
+<Layout title="Create Account - Rebirth Hosting">
+  <div class="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+    <div class="w-full max-w-md">
       <div class="text-center mb-10">
-        <div class="mx-auto w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-yellow-400/20">
-          <span class="text-4xl">🚀</span>
-        </div>
-        <h1 class="text-4xl font-bold tracking-tighter mb-3 bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 bg-clip-text text-transparent">
-          Create your account
-        </h1>
-        <p class="text-zinc-400">Join the Rebirth Hosting reseller platform</p>
+        <a href="/" class="text-2xl font-semibold tracking-tight">Rebirth Hosting</a>
+        <h1 class="mt-6 text-3xl font-semibold">Create your account</h1>
+        <p class="mt-2 text-zinc-400">Start reselling domains and hosting today</p>
       </div>
 
-      <!-- Form Card -->
-      <div class="bg-zinc-900/70 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl">
-        <form id="signup-form" class="space-y-6">
-          <Input 
-            label="Email Address" 
-            name="email" 
-            type="email" 
-            placeholder="you@company.com" 
-            required 
-          />
-          
-          <Input 
-            label="Password" 
-            name="password" 
-            type="password" 
-            placeholder="••••••••" 
-            required 
-          />
-
-          <!-- Turnstile -->
-          <div class="pt-2">
-            <div id="turnstile-container" class="flex justify-center min-h-[70px]"></div>
-            <p id="turnstile-status" class="text-yellow-400 text-xs mt-2 text-center hidden">Verifying security...</p>
-            <p id="turnstile-error" class="text-rose-400 text-xs mt-2 text-center hidden"></p>
+      <div id="signup-form">
+        <form id="signup" class="space-y-4">
+          <div>
+            <label class="block text-sm text-zinc-400 mb-1.5">Email address</label>
+            <input
+              type="email"
+              name="email"
+              required
+              class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600"
+              placeholder="you@company.com"
+            />
           </div>
 
-          <div id="form-error" class="hidden text-rose-400 text-sm text-center p-3 bg-rose-500/10 border border-rose-500/30 rounded-2xl"></div>
+          <div>
+            <label class="block text-sm text-zinc-400 mb-1.5">Password</label>
+            <input
+              type="password"
+              name="password"
+              required
+              minlength="6"
+              class="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600"
+              placeholder="••••••••"
+            />
+          </div>
 
-          <Button type="submit" id="submit-btn" disabled class="w-full py-4 text-base">
-            Complete security check to continue
-          </Button>
+          <button
+            type="submit"
+            class="w-full bg-white hover:bg-zinc-200 transition-colors text-black font-medium py-3.5 rounded-xl mt-2"
+          >
+            Create Account
+          </button>
         </form>
+      </div>
 
-        <div class="mt-8 text-center text-sm text-zinc-400">
-          Already have an account? 
-          <a href="/signin" class="text-yellow-400 hover:text-amber-300 font-medium transition-colors">Sign in</a>
+      <!-- Verification message (hidden by default) -->
+      <div id="verification-message" class="hidden text-center">
+        <div class="mx-auto w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2.01 2.01 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
         </div>
+        <h2 class="text-2xl font-semibold">Check your email</h2>
+        <p class="mt-3 text-zinc-400">
+          We've sent a verification link to your email address.<br>
+          Click the link to activate your account.
+        </p>
+        <a href="/signin" class="inline-block mt-8 text-sm text-zinc-400 hover:text-white">
+          Already verified? Sign in →
+        </a>
       </div>
 
-      <div class="mt-8 text-center">
-        <p class="text-xs text-zinc-500">Protected by Cloudflare Turnstile</p>
-      </div>
+      <p class="mt-8 text-center text-sm text-zinc-500">
+        Already have an account?
+        <a href="/signin" class="text-white hover:underline">Sign in</a>
+      </p>
     </div>
   </div>
 </Layout>
 
 <script>
-  let turnstileToken = '';
-  let widgetId = null;
-  let isSubmitting = false;
+  import { supabase } from '../lib/supabase';
 
-  const siteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || import.meta.env.TURNSTILE_SITE_KEY;
+  const form = document.getElementById('signup') as HTMLFormElement;
+  const formContainer = document.getElementById('signup-form');
+  const verificationMessage = document.getElementById('verification-message');
 
-  function showError(message) {
-    const errorEl = document.getElementById('form-error');
-    errorEl.textContent = message;
-    errorEl.classList.remove('hidden');
-  }
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-  function hideError() {
-    const errorEl = document.getElementById('form-error');
-    errorEl.classList.add('hidden');
-  }
+    const formData = new FormData(form);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-  function resetTurnstile() {
-    if (typeof turnstile !== 'undefined' && widgetId) {
-      turnstile.reset(widgetId);
-      turnstileToken = '';
-      document.getElementById('submit-btn').disabled = true;
-      console.log('Turnstile widget reset');
-    }
-  }
-
-  function initializeTurnstile() {
-    const container = document.getElementById('turnstile-container');
-    
-    if (!siteKey) {
-      console.error('Turnstile site key is missing from environment variables');
-      const errorEl = document.getElementById('turnstile-error');
-      errorEl.textContent = 'Security service not configured. Contact support.';
-      errorEl.classList.remove('hidden');
-      return;
-    }
-
-    if (typeof turnstile === 'undefined') {
-      console.warn('[Turnstile] Script not loaded yet, retrying...');
-      setTimeout(initializeTurnstile, 400);
-      return;
-    }
-
-    try {
-      widgetId = turnstile.render(container, {
-        sitekey: siteKey,
-        theme: 'dark',
-        size: 'normal',
-        retry: 'auto',
-        callback: function(token) {
-          turnstileToken = token;
-          document.getElementById('submit-btn').disabled = false;
-          document.getElementById('turnstile-status').classList.add('hidden');
-          console.log('%c✅ Turnstile verified successfully', 'color:#fbbf24; font-weight:bold');
-        },
-        'error-callback': function(errorCode) {
-          console.error('Turnstile error code:', errorCode);
-          const errorEl = document.getElementById('turnstile-error');
-          errorEl.textContent = 'Security check failed. Please refresh the page.';
-          errorEl.classList.remove('hidden');
-          document.getElementById('submit-btn').disabled = true;
-        },
-        'expired-callback': function() {
-          console.log('Turnstile token expired - resetting');
-          resetTurnstile();
-        }
-      });
-      
-      console.log('%c🔒 Turnstile widget initialized with key:', 'color:#fbbf24', siteKey.substring(0, 15) + '...');
-    } catch (e) {
-      console.error('Failed to render Turnstile widget:', e);
-      const errorEl = document.getElementById('turnstile-error');
-      errorEl.textContent = 'Failed to load security check. Please refresh.';
-      errorEl.classList.remove('hidden');
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('signup-form');
-    const submitBtn = document.getElementById('submit-btn');
-    const statusEl = document.getElementById('turnstile-status');
-
-    initializeTurnstile();
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (isSubmitting) return;
-      
-      hideError();
-      isSubmitting = true;
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Creating account...';
-
-      const email = form.querySelector('[name="email"]').value.trim();
-      const password = form.querySelector('[name="password"]').value;
-
-      if (!email || !password) {
-        showError('Please fill in all fields');
-        isSubmitting = false;
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create Account';
-        return;
-      }
-
-      if (!turnstileToken) {
-        showError('Please complete the security check above');
-        isSubmitting = false;
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create Account';
-        return;
-      }
-
-      statusEl.textContent = 'Verifying with server...';
-      statusEl.classList.remove('hidden');
-
-      try {
-        const response = await fetch('/api/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            password,
-            turnstileToken
-          })
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-          showError(result.error || 'Signup failed');
-          resetTurnstile();
-          isSubmitting = false;
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Create Account';
-          return;
-        }
-
-        window.location.href = `/check-email?email=${encodeURIComponent(email)}`;
-        
-      } catch (err) {
-        console.error('Signup error:', err);
-        showError('Connection error. Please try again.');
-        resetTurnstile();
-        isSubmitting = false;
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create Account';
-      }
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
     });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    // Show verification message
+    formContainer.classList.add('hidden');
+    verificationMessage.classList.remove('hidden');
   });
 </script>

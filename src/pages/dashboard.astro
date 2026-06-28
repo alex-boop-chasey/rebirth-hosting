@@ -1,49 +1,54 @@
 ---
-import Layout from '../components/Layout.astro';
-
-const { cookies, redirect } = Astro;
-const accessToken = cookies.get("sb-access-token");
-const refreshToken = cookies.get("sb-refresh-token");
-
-if (!accessToken || !refreshToken) {
-  return redirect('/signin', 302);
-}
-
-// For now, show a simple dashboard. Later we'll connect to Synergy Wholesale.
-const userEmail = 'customer@rebirth.hosting'; // Will be replaced with real session data
+import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Dashboard" showNav={false}>
-  <div class="min-h-screen bg-zinc-950 p-8">
-    <div class="max-w-7xl mx-auto">
+<Layout title="Dashboard - Rebirth Hosting">
+  <div class="min-h-screen bg-zinc-950 text-white">
+    <div class="max-w-5xl mx-auto px-6 py-12">
       <div class="flex justify-between items-center mb-12">
-        <div class="flex items-center gap-4">
-          <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-black font-bold text-2xl">R</div>
-          <div>
-            <span class="font-bold text-3xl tracking-tighter bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">Rebirth</span>
-            <p class="text-xs text-zinc-500 -mt-1">Hosting Dashboard</p>
-          </div>
+        <div>
+          <a href="/" class="text-2xl font-semibold tracking-tight">Rebirth Hosting</a>
         </div>
-        <a href="/api/signout" class="text-sm px-6 py-2.5 border border-amber-400/30 hover:bg-amber-400/10 text-amber-400 rounded-2xl transition-all">Sign Out</a>
+        <button id="signout" class="text-sm px-4 py-2 rounded-lg border border-zinc-700 hover:bg-zinc-900">
+          Sign Out
+        </button>
       </div>
 
-      <div class="bg-zinc-900 rounded-3xl p-12 text-center">
-        <h1 class="text-5xl font-bold tracking-tighter mb-6 bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
-          Welcome back!
-        </h1>
-        <p class="text-xl text-zinc-400 mb-12 max-w-md mx-auto">
-          This is your unique client dashboard.<br>
-          It will soon be connected to your Synergy Wholesale white-label storefront.
-        </p>
-        <div class="inline-flex items-center gap-3 bg-zinc-800 rounded-2xl px-8 py-4 text-sm text-amber-400">
-          <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          Account verified and active
+      <div class="mb-8">
+        <h1 class="text-4xl font-semibold tracking-tight">Welcome back</h1>
+        <p class="text-zinc-400 mt-2">Your reseller dashboard</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+          <div class="text-sm text-zinc-400">Domains</div>
+          <div class="text-4xl font-semibold mt-2">0</div>
+          <div class="text-emerald-400 text-sm mt-4">Manage domains →</div>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+          <div class="text-sm text-zinc-400">Hosting Accounts</div>
+          <div class="text-4xl font-semibold mt-2">0</div>
+          <div class="text-emerald-400 text-sm mt-4">Manage hosting →</div>
+        </div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+          <div class="text-sm text-zinc-400">Balance</div>
+          <div class="text-4xl font-semibold mt-2">$0.00</div>
+          <div class="text-emerald-400 text-sm mt-4">Add credit →</div>
         </div>
       </div>
 
-      <div class="mt-12 text-center text-xs text-zinc-500">
-        Synergy Wholesale Integration coming soon
+      <div class="mt-12 text-center text-sm text-zinc-500">
+        This is a placeholder dashboard. Full features coming soon.
       </div>
     </div>
   </div>
 </Layout>
+
+<script>
+  import { supabase } from '../lib/supabase';
+
+  document.getElementById('signout')?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  });
+</script>
