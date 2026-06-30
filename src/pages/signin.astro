@@ -1,5 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
+
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
 ---
 
 <Layout title="Sign In - Rebirth Hosting">
@@ -10,7 +12,7 @@ import Layout from '../layouts/Layout.astro';
         <h1 class="mt-6 text-3xl font-semibold">Welcome back</h1>
       </div>
 
-      <form id="signin" class="space-y-4">
+      <form id="signin" class="space-y-5">
         <div>
           <label class="block text-sm text-zinc-400 mb-1.5">Email address</label>
           <input
@@ -33,6 +35,11 @@ import Layout from '../layouts/Layout.astro';
           />
         </div>
 
+        <!-- Cloudflare Turnstile -->
+        <div class="pt-2">
+          <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark"></div>
+        </div>
+
         <button
           type="submit"
           class="w-full bg-white hover:bg-zinc-200 transition-colors text-black font-medium py-3.5 rounded-xl mt-2"
@@ -42,36 +49,39 @@ import Layout from '../layouts/Layout.astro';
       </form>
 
       <p class="mt-8 text-center text-sm text-zinc-500">
-        Don't have an account?
-        <a href="/signup" class="text-white hover:underline">Create one</a>
+        Don't have an account? <a href="/signup" class="text-white hover:underline">Create one</a>
       </p>
     </div>
   </div>
 </Layout>
 
+<script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 <script>
   import { supabase } from '../lib/supabase';
 
-  const form = document.getElementById('signin') as HTMLFormElement;
+  const form = document.getElementById('signin');
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const formData = new FormData(form);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    const token = document.querySelector('[name="cf-turnstile-response"]')?.value;
+    if (!token) {
+      alert('Please complete the security check');
+      return;
+    }
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const formData = new FormData(form);
+    const email = formData.get('email');
+    const password = formData.get('password');
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     if (error) {
       alert(error.message);
       return;
     }
 
-    // Success - redirect to dashboard
     window.location.href = '/dashboard';
   });
 </script>
